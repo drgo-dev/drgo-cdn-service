@@ -322,7 +322,7 @@ const canSave = computed(() => !!title.value && !!imageFile.value && !!audioFile
 .thumb {
   position: relative;
   width: 100%;
-  height: 100px;                 /* ✅ 세로도 조금 키워서 비율 유지 */
+  height: auto;                 /* ✅ 세로도 조금 키워서 비율 유지 */
   background: #f3f4f6;
   border-radius: 10px;
   display: flex;

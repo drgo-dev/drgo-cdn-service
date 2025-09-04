@@ -1,6 +1,5 @@
 import { supabase } from '@/lib/supabase'
-
-export const UPLOAD_ENDPOINT = import.meta.env.VITE_UPLOAD_ENDPOINT || '/upload'
+const UPLOAD_ENDPOINT = import.meta.env.VITE_UPLOAD_ENDPOINT || '/upload'
 
 export async function uploadToR2(file) {
     const { data: { session } } = await supabase.auth.getSession()
@@ -16,9 +15,7 @@ export async function uploadToR2(file) {
         body: form,
     })
 
-    const text = await res.clone().text()
-    let json = {}
-    try { json = JSON.parse(text) } catch {}
+    const json = await res.json().catch(() => ({}))
     if (!res.ok || !json?.ok) throw new Error(json?.error || `업로드 실패 (${res.status})`)
     return json // { ok, key, publicUrl, userId }
 }

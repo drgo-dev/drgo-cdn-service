@@ -1,4 +1,4 @@
-// _worker.js (프로젝트 루트)
+// _worker.js
 import { createClient } from '@supabase/supabase-js'
 
 const cors = {
@@ -13,15 +13,15 @@ export default {
     async fetch(request, env) {
         const url = new URL(request.url)
 
-        // CORS
+        // CORS Preflight
         if (request.method === 'OPTIONS') return new Response(null, { headers: cors })
 
-        // 핑 (브라우저에서 /upload 열면 JSON 떠야 함)
+        // 핑 (브라우저에서 GET /upload 확인용)
         if (url.pathname === '/upload' && request.method === 'GET') {
             return json({ ok: true, via: '_worker.js' })
         }
 
-        // ✅ 업로드 처리
+        // ✅ 실제 업로드 처리
         if (url.pathname === '/upload' && request.method === 'POST') {
             try {
                 const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_KEY, {
@@ -34,8 +34,8 @@ export default {
 
                 const { data: userData, error } = await supabase.auth.getUser(token)
                 if (error || !userData?.user?.id) return json({ error: '사용자 인증 실패' }, 401)
-
                 const uid = userData.user.id
+
                 const form = await request.formData()
                 const file = form.get('file')
                 const userId = (form.get('user_id') || '').toString()
@@ -54,7 +54,7 @@ export default {
             }
         }
 
-        // ✅ 나머지는 정적 앱으로
+        // ✅ 나머지는 정적 자산으로 패스
         return env.ASSETS.fetch(request)
     },
 }

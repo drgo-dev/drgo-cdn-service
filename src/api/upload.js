@@ -9,10 +9,11 @@ export async function uploadToR2(file) {
     form.append('file', file)
     form.append('user_id', session.user.id)
 
-    const res = await fetch(UPLOAD_ENDPOINT, {
+    const ENDPOINT = import.meta.env.VITE_UPLOAD_ENDPOINT || '/upload' // 배포에선 https://drgo-cdn-service.pages.dev/upload 권장
+    await fetch(ENDPOINT, {
         method: 'POST',
         headers: { Authorization: `Bearer ${session.access_token}` },
-        body: form,
+        body: form, // FormData(file, user_id)
     })
 
     const json = await res.json().catch(() => ({}))

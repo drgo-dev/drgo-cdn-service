@@ -13,6 +13,6 @@ export const supabase =
                 storageKey: 'drgo-app-auth',
                 persistSession: true,
                 autoRefreshToken: true,
-            },
+            }
         }
     ))

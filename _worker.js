@@ -1,4 +1,4 @@
-// _worker.js (디버그 버전)
+// _worker.js
 export default {
     async fetch(request, env) {
         const url = new URL(request.url)
@@ -15,7 +15,6 @@ export default {
             })
         }
 
-        // 나머지는 정적 에셋 전달
         return env.ASSETS.fetch(request)
     },
 }

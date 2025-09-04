@@ -2,7 +2,7 @@
 import { supabase } from '@/lib/supabase';
 
 const ENDPOINT =
-    import.meta.env.VITE_UPLOAD_ENDPOINT || 'https://<your-pages-domain>/upload';
+    import.meta.env.VITE_UPLOAD_ENDPOINT || 'https://drgo-cdn-service.pages.dev/upload';
 
 export async function uploadToR2(file) {
     const { data: { session } } = await supabase.auth.getSession();

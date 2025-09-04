@@ -12,6 +12,7 @@ const imageFile = ref(null)
 const audioFile = ref(null)
 const imagePreview = ref('')
 const audioPreview = ref('')
+const title = ref('')
 
 // 상태
 const isSaving = ref(false)
@@ -95,6 +96,7 @@ async function saveSignatureSet() {
 
     const { error: dbErr } = await supabase.from('signature_sets').insert({
       user_id: user.id,
+      title: title.value.trim(),
       image_url: img.publicUrl,
       image_name: imageFile.value.name,
       image_size: imageFile.value.size,
@@ -143,7 +145,7 @@ async function deleteSet(row) {
   if (delErr) return alert(delErr.message)
   await fetchSets()
 }
-const canSave = computed(() => !!imageFile.value && !!audioFile.value && !isSaving.value)
+const canSave = computed(() => !!title.value && !!imageFile.value && !!audioFile.value && !isSaving.value)
 </script>
 
 <template>
@@ -155,6 +157,12 @@ const canSave = computed(() => !!imageFile.value && !!audioFile.value && !isSavi
 
     <!-- 업로드: 한 영역에 이미지(위) + 오디오(아래) -->
     <div class="panel">
+      <div class="row">
+        <div class="label">이름</div>
+        <div class="control">
+          <input v-model="title" type="text" placeholder="시그니처 이름 입력" class="input" />
+        </div>
+      </div>
       <div class="row">
         <div class="label">이미지</div>
         <div class="control">
@@ -204,8 +212,9 @@ const canSave = computed(() => !!imageFile.value && !!audioFile.value && !isSavi
         </div>
         <div class="meta-col">
           <div class="title">
-            <b>{{ row.image_name || '이미지' }}</b> · <b>{{ row.audio_name || '오디오' }}</b>
+            <div class="title"><b>{{ row.title }}</b></div> <!-- 👈 이름 표시 -->
           </div>
+          <small>{{ row.image_name || '이미지' }}</small> · <small>{{ row.audio_name || '오디오' }}</small>
           <div class="sub">{{ new Date(row.created_at).toLocaleString() }}</div>
           <div class="links">
           </div>
@@ -264,4 +273,6 @@ const canSave = computed(() => !!imageFile.value && !!audioFile.value && !isSavi
   border:none; background:transparent; color:#007bff; cursor:pointer; padding:0;
 }
 .actions { display:flex; gap:8px; }
+.input { width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; }
+
 </style>

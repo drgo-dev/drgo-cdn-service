@@ -2,57 +2,47 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { supabase } from '@/lib/supabase'
-import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
-const userStore = useUserStore()
-
 const email = ref('')
 const password = ref('')
 const isLoading = ref(false)
 const errorMessage = ref('')
+const message = ref('')
 
-async function handleLogin() {
+async function handleSignup() {
   errorMessage.value = ''
+  message.value = ''
   isLoading.value = true
   try {
-    const { error } = await supabase.auth.signInWithPassword({
+    const { error } = await supabase.auth.signUp({
       email: email.value, password: password.value,
     })
     if (error) throw error
-    await userStore.fetchProfile()
-    router.replace({ name: 'home' })
+    message.value = '회원가입 완료! 이메일 인증 후 로그인하세요.'
+    setTimeout(() => router.replace({ name: 'login' }), 800)
   } catch (err) {
-    errorMessage.value = err.message || '로그인에 실패했습니다.'
+    errorMessage.value = err.message || '회원가입에 실패했습니다.'
   } finally {
     isLoading.value = false
   }
-}
-
-async function loginWithGithub() {
-  const redirectTo = `${window.location.origin}/`
-  const { error } = await supabase.auth.signInWithOAuth({
-    provider: 'github',
-    options: { redirectTo },
-  })
-  if (error) alert(error.message)
 }
 </script>
 
 <template>
   <div class="auth-wrap">
     <div class="card">
-      <h2>로그인</h2>
-      <form @submit.prevent="handleLogin" class="form">
+      <h2>회원가입</h2>
+      <form @submit.prevent="handleSignup" class="form">
         <label>이메일</label>
         <input type="email" v-model="email" placeholder="you@example.com" />
         <label>비밀번호</label>
-        <input type="password" v-model="password" placeholder="••••••••" />
+        <input type="password" v-model="password" placeholder="최소 6자" />
         <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
-        <button class="btn" :disabled="isLoading">{{ isLoading ? '로그인 중…' : '로그인' }}</button>
+        <p v-if="message" class="ok">{{ message }}</p>
+        <button class="btn" :disabled="isLoading">{{ isLoading ? '처리 중…' : '회원가입' }}</button>
       </form>
-      <button class="btn ghost" @click="loginWithGithub">GitHub로 로그인</button>
-      <p class="hint">계정이 없으신가요? <router-link to="/signup">회원가입</router-link></p>
+      <p class="hint">이미 계정이 있으신가요? <router-link to="/login">로그인</router-link></p>
     </div>
   </div>
 </template>
@@ -62,9 +52,9 @@ async function loginWithGithub() {
 .card { width:100%; max-width:420px; border:1px solid #eee; border-radius:10px; padding:24px; box-shadow:0 6px 18px rgba(0,0,0,.06); }
 .form { display:grid; gap:10px; margin:12px 0 16px; }
 input { padding:10px 12px; border:1px solid #ccc; border-radius:8px; }
-.btn { padding:10px 12px; border-radius:8px; border:none; background:#007bff; color:#fff; cursor:pointer; }
+.btn { padding:10px 12px; border-radius:8px; border:none; background:#28a745; color:#fff; cursor:pointer; }
 .btn:disabled { opacity:.6; cursor:not-allowed; }
-.btn.ghost { background:#fff; color:#007bff; border:1px solid #007bff; margin-top:8px; }
 .hint { margin-top:10px; }
 .error { background:#fde8ea; color:#b1001f; padding:8px; border-radius:6px; }
+.ok { background:#e9f7ef; color:#207044; padding:8px; border-radius:6px; }
 </style>

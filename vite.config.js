@@ -8,7 +8,7 @@ export default defineConfig({
     build: { target: 'es2020' }, // top-level await 이슈 방지
     server: {
         proxy: {
-            '/upload': { target: 'http://127.0.0.1:8788', changeOrigin: true }
+            '/upload': { target: 'https://drgo-cdn-service.pages.dev', changeOrigin: true }
         }
     }
 })

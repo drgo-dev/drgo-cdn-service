@@ -10,3 +10,7 @@ import LoginView from '@/views/LoginView.vue'
 import SignatureView from '@/views/Signature.vue'
 const isLoggedIn = computed(() => useUserStore().isLoggedIn)
 </script>
+
+<template>
+  <div>배포 완료!</div>
+</template>

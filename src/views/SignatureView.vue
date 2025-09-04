@@ -1,3 +1,4 @@
+<!-- src/views/Signature.vue -->
 <script setup>
 import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import { supabase } from '@/lib/supabase'
@@ -5,9 +6,6 @@ import { useUserStore } from '@/stores/user'
 import { uploadToR2 } from '@/api/upload'
 
 const userStore = useUserStore()
-
-// 새로 추가된 시그니처 이름
-const title = ref('')
 
 // 선택한 파일 & 미리보기
 const imageFile = ref(null)
@@ -24,8 +22,48 @@ const toast = ref('')
 // 세트 목록
 const sets = ref([])
 
-// … (생략: 미리보기/토스트 함수 동일)
+function showToast(msg) {
+  toast.value = msg
+  setTimeout(() => (toast.value = ''), 1500)
+}
 
+// 미리보기 URL 정리
+function setImagePreview(file) {
+  if (imagePreview.value) URL.revokeObjectURL(imagePreview.value)
+  imagePreview.value = file ? URL.createObjectURL(file) : ''
+}
+function setAudioPreview(file) {
+  if (audioPreview.value) URL.revokeObjectURL(audioPreview.value)
+  audioPreview.value = file ? URL.createObjectURL(file) : ''
+}
+onBeforeUnmount(() => {
+  if (imagePreview.value) URL.revokeObjectURL(imagePreview.value)
+  if (audioPreview.value) URL.revokeObjectURL(audioPreview.value)
+})
+
+// 파일 선택
+function onPickImage(e) {
+  const f = e.target.files?.[0]
+  e.target.value = ''
+  if (!f) return
+  if (!f.type?.startsWith('image/')) return (error.value = '이미지 파일을 선택하세요.')
+  if (f.size > 10 * 1024 * 1024) return (error.value = '이미지 최대 10MB까지 가능합니다.')
+  error.value = ''
+  imageFile.value = f
+  setImagePreview(f)
+}
+function onPickAudio(e) {
+  const f = e.target.files?.[0]
+  e.target.value = ''
+  if (!f) return
+  if (!f.type?.startsWith('audio/')) return (error.value = '오디오 파일을 선택하세요.')
+  if (f.size > 20 * 1024 * 1024) return (error.value = '오디오 최대 20MB까지 가능합니다.')
+  error.value = ''
+  audioFile.value = f
+  setAudioPreview(f)
+}
+
+// 목록
 async function fetchSets() {
   const uid = userStore.user?.id
   if (!uid) return (sets.value = [])
@@ -36,19 +74,19 @@ async function fetchSets() {
       .eq('user_id', uid)
       .order('created_at', { ascending: false })
   isLoadingList.value = false
-  sets.value = err ? [] : data || []
+  if (err) sets.value = []
+  else sets.value = data || []
 }
+watch(() => userStore.user?.id, fetchSets, { immediate: true })
 
-// 저장
+// 저장(두 파일 업로드 → 한 행 insert)
 async function saveSignatureSet() {
   error.value = ''
-  if (!title.value.trim()) return (error.value = '시그니처 이름을 입력하세요.')
   if (!imageFile.value || !audioFile.value) return (error.value = '이미지와 오디오를 모두 선택하세요.')
-
   isSaving.value = true
   try {
     const [img, aud] = await Promise.all([
-      uploadToR2(imageFile.value),
+      uploadToR2(imageFile.value),  // { ok, publicUrl, ... }
       uploadToR2(audioFile.value),
     ])
 
@@ -57,7 +95,6 @@ async function saveSignatureSet() {
 
     const { error: dbErr } = await supabase.from('signature_sets').insert({
       user_id: user.id,
-      title: title.value.trim(),   // 👈 이름 추가
       image_url: img.publicUrl,
       image_name: imageFile.value.name,
       image_size: imageFile.value.size,
@@ -67,17 +104,13 @@ async function saveSignatureSet() {
     })
     if (dbErr) throw dbErr
 
-    // 리셋
-    title.value = ''
+    // 리셋 + 목록 갱신
     imageFile.value = null
     audioFile.value = null
-    imagePreview.value && URL.revokeObjectURL(imagePreview.value)
-    audioPreview.value && URL.revokeObjectURL(audioPreview.value)
-    imagePreview.value = ''
-    audioPreview.value = ''
-
+    setImagePreview(null)
+    setAudioPreview(null)
     await fetchSets()
-    toast.value = '시그니처 저장 완료'
+    showToast('시그니처 저장 완료')
   } catch (e) {
     error.value = e?.message || '저장 실패'
   } finally {
@@ -85,7 +118,32 @@ async function saveSignatureSet() {
   }
 }
 
-const canSave = computed(() => !!title.value && !!imageFile.value && !!audioFile.value && !isSaving.value)
+// 링크 복사 (클립보드)
+async function copyLink(url) {
+  try {
+    await navigator.clipboard.writeText(url)
+    showToast('링크 복사됨')
+  } catch {
+    // 폴백
+    const ta = document.createElement('textarea')
+    ta.value = url
+    document.body.appendChild(ta)
+    ta.select()
+    document.execCommand('copy')
+    document.body.removeChild(ta)
+    showToast('링크 복사됨')
+  }
+}
+
+// 세트 삭제 (DB 행만 삭제; R2 삭제는 별도 Functions 필요)
+async function deleteSet(row) {
+  const ok = confirm('세트를 목록에서 삭제할까요? (R2 파일은 남습니다)')
+  if (!ok) return
+  const { error: delErr } = await supabase.from('signature_sets').delete().eq('id', row.id)
+  if (delErr) return alert(delErr.message)
+  await fetchSets()
+}
+const canSave = computed(() => !!imageFile.value && !!audioFile.value && !isSaving.value)
 </script>
 
 <template>
@@ -95,17 +153,8 @@ const canSave = computed(() => !!title.value && !!imageFile.value && !!audioFile
     <div v-if="toast" class="toast">{{ toast }}</div>
     <div v-if="error" class="alert error">{{ error }}</div>
 
-    <!-- 업로드 영역 -->
+    <!-- 업로드: 한 영역에 이미지(위) + 오디오(아래) -->
     <div class="panel">
-      <!-- 이름 입력 -->
-      <div class="row">
-        <div class="label">이름</div>
-        <div class="control">
-          <input v-model="title" type="text" placeholder="시그니처 이름 입력" class="input" />
-        </div>
-      </div>
-
-      <!-- 이미지 업로드 -->
       <div class="row">
         <div class="label">이미지</div>
         <div class="control">
@@ -116,11 +165,11 @@ const canSave = computed(() => !!title.value && !!imageFile.value && !!audioFile
           <div class="actions">
             <input id="img" type="file" accept="image/*" @change="onPickImage" hidden />
             <label for="img" class="btn">이미지 선택</label>
+            <span v-if="imageFile" class="meta">{{ imageFile.name }} ({{ (imageFile.size/1024/1024).toFixed(2) }} MB)</span>
           </div>
         </div>
       </div>
 
-      <!-- 오디오 업로드 -->
       <div class="row">
         <div class="label">오디오</div>
         <div class="control">
@@ -131,6 +180,7 @@ const canSave = computed(() => !!title.value && !!imageFile.value && !!audioFile
           <div class="actions">
             <input id="aud" type="file" accept="audio/*" @change="onPickAudio" hidden />
             <label for="aud" class="btn">오디오 선택</label>
+            <span v-if="audioFile" class="meta">{{ audioFile.name }} ({{ (audioFile.size/1024/1024).toFixed(2) }} MB)</span>
           </div>
         </div>
       </div>
@@ -143,18 +193,27 @@ const canSave = computed(() => !!title.value && !!imageFile.value && !!audioFile
     </div>
 
     <!-- 목록 -->
-    <h3 class="list-title">내 세트</h3>
-    <div v-if="sets.length === 0" class="muted">저장된 세트가 없습니다.</div>
+    <h3 class="list-title">시그니처 목록</h3>
+    <div v-if="isLoadingList" class="muted">목록 불러오는 중…</div>
+    <div v-else-if="sets.length === 0" class="muted">저장된 세트가 없습니다.</div>
+
     <div v-else class="list">
       <div v-for="row in sets" :key="row.id" class="set-row">
-        <div class="thumb"><img :src="row.image_url" alt="" /></div>
+        <div class="thumb">
+          <img :src="row.image_url" alt="" />
+        </div>
         <div class="meta-col">
-          <div class="title"><b>{{ row.title }}</b></div> <!-- 👈 이름 표시 -->
+          <div class="title">
+            <b>{{ row.image_name || '이미지' }}</b> · <b>{{ row.audio_name || '오디오' }}</b>
+          </div>
           <div class="sub">{{ new Date(row.created_at).toLocaleString() }}</div>
           <div class="links">
-            <button class="link-btn" @click="copyLink(row.image_url)">이미지 링크복사</button>
-            <button class="link-btn" @click="copyLink(row.audio_url)">오디오 링크복사</button>
           </div>
+        </div>
+        <div class="actions">
+          <button class="btn small" @click="copyLink(row.image_url)">이미지 링크복사</button>
+          <button class="btn small" @click="copyLink(row.audio_url)">오디오 링크복사</button>
+          <button class="btn small danger" @click="deleteSet(row)">세트 삭제</button>
         </div>
       </div>
     </div>
@@ -162,7 +221,6 @@ const canSave = computed(() => !!title.value && !!imageFile.value && !!audioFile
 </template>
 
 <style scoped>
-.input { width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; }
 .wrap { max-width: 980px; margin: 32px auto; padding: 0 16px; }
 .toast {
   position: sticky; top: 8px; display:inline-block;

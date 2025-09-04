@@ -19,15 +19,13 @@ export async function onRequestOptions() {
 }
 
 export async function onRequestGet() {
-    // 워커 적용 확인용 핑
+    // 헬스체크용
     return json({ ok: true, via: 'functions/upload.js' });
 }
 
-export async function onRequestPost(context) {
+export async function onRequestPost({ request, env }) {
     try {
-        const { request, env } = context;
-
-        // 1) 인증
+        // 1) Supabase 토큰 검증
         const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_KEY, {
             auth: { persistSession: false, autoRefreshToken: false },
         });
@@ -49,7 +47,12 @@ export async function onRequestPost(context) {
         if (!file || !userId) return json({ error: '파일과 사용자 ID가 필요합니다.' }, 400);
         if (userId !== uid) return json({ error: '사용자 불일치' }, 403);
 
-        // 3) R2 업로드
+        // (선택) 파일 제한
+        // if (file.size && file.size > 10 * 1024 * 1024) return json({ error: '파일이 너무 큽니다.' }, 413);
+        // const okType = ['image/', 'audio/'].some(p => (file.type || '').startsWith(p));
+        // if (!okType) return json({ error: '허용되지 않는 형식' }, 415);
+
+        // 3) R2 업로드 (바인딩: MY_BUCKET)
         const name = file.name || 'file';
         const ext = name.includes('.') ? name.split('.').pop() : 'bin';
         const key = `${crypto.randomUUID()}.${ext}`;
@@ -64,3 +67,10 @@ export async function onRequestPost(context) {
         return json({ error: (e && e.message) || '서버 에러' }, 500);
     }
 }
+await supabase.from('signatures').insert({
+    user_id: session.user.id,
+    file_name: file.name,
+    file_url: data.publicUrl,
+    file_type: file.type.startsWith('image/') ? 'image' : 'audio',
+    size: file.size,
+});

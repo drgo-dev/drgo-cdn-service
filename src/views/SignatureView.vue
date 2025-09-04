@@ -183,7 +183,7 @@ const canSave = computed(() => !!title.value && !!imageFile.value && !!audioFile
         <div class="control">
           <div class="preview audio">
             <audio v-if="audioPreview" :src="audioPreview" controls />
-            <div v-else class="placeholder">오디오 미리보기</div>
+            <div v-else class="placeholder">오디오 미리듣기</div>
           </div>
           <div class="actions">
             <input id="aud" type="file" accept="audio/*" @change="onPickAudio" hidden />
@@ -209,13 +209,33 @@ const canSave = computed(() => !!title.value && !!imageFile.value && !!audioFile
       <div v-for="row in sets" :key="row.id" class="set-row">
         <div class="thumb">
           <img :src="row.image_url" alt="" />
+          <div class="hover-preview">
+            <img :src="row.image_url" alt="" />
+          </div>
         </div>
+
+        <!-- 메타영역 -->
+<!--
+        <div class="meta-col">
+          <div class="title">
+            <b>{{ row.title?.trim() || (row.image_name || '이미지') + ' · ' + (row.audio_name || '오디오') }}</b>
+          </div>
+          <div class="sub">{{ new Date(row.created_at).toLocaleString() }}</div>
+
+          &lt;!&ndash; 인라인 음원 미리듣기 &ndash;&gt;
+          <div class="audio-inline">
+            <audio :src="row.audio_url" controls preload="none"></audio>
+          </div>
+-->
         <div class="meta-col">
           <div class="title">
             <div class="title"><b>{{ row.title }}</b></div> <!-- 👈 이름 표시 -->
           </div>
           <small>{{ row.image_name || '이미지' }}</small> · <small>{{ row.audio_name || '오디오' }}</small>
           <div class="sub">{{ new Date(row.created_at).toLocaleString() }}</div>
+          <div class="audio-inline">
+            <audio :src="row.audio_url" controls preload="none"></audio>
+          </div>
           <div class="links">
           </div>
         </div>
@@ -230,7 +250,7 @@ const canSave = computed(() => !!title.value && !!imageFile.value && !!audioFile
 </template>
 
 <style scoped>
-.wrap { max-width: 980px; margin: 32px auto; padding: 0 16px; }
+.wrap { max-width: 900px; margin: 32px auto; padding: 0 16px; }
 .toast {
   position: sticky; top: 8px; display:inline-block;
   background:#111; color:#fff; padding:8px 12px; border-radius:8px; margin-bottom:8px;
@@ -273,6 +293,79 @@ const canSave = computed(() => !!title.value && !!imageFile.value && !!audioFile
   border:none; background:transparent; color:#007bff; cursor:pointer; padding:0;
 }
 .actions { display:flex; gap:8px; }
-.input { width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; }
+.input { width:98%; padding:8px; border:1px solid #ccc; border-radius:6px; }
+/* 행 자체도 잘리지 않게 */
+.set-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 84px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #f3f4f6;
 
+  /* ✅ 확실히 오버레이가 밖으로 나올 수 있게 */
+  overflow: visible;
+  z-index: 0;
+}
+/* ===== 목록: 썸네일 잘림 방지(contain) ===== */
+.set-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 140px 1fr auto; /* ✅ 썸네일 너비를 조금 더 확보 */
+  gap: 14px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #f3f4f6;
+  overflow: visible;
+}
+.thumb {
+  position: relative;
+  width: 100%;
+  height: 100px;                 /* ✅ 세로도 조금 키워서 비율 유지 */
+  background: #f3f4f6;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /* hover 오버레이 쓰는 경우 밖으로 나가도 보이게 */
+  overflow: visible;
+}
+.thumb img {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;                    /* ✅ 가로/세로 중 긴 쪽에 맞추기 */
+  height: auto;
+  object-fit: contain;            /* ✅ 잘림 없음 */
+}
+.hover-preview {                  /* (사용 중이라면) 오버레이 계속 표시 가능 */
+  display: none;
+  position: absolute;
+  top: 50%;
+  left: 100%;
+  transform: translate(12px, -50%);
+  width: 360px;
+  max-height: 360px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.15);
+  padding: 6px;
+  z-index: 10;
+  pointer-events: none;
+}
+.hover-preview img {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+.thumb:hover .hover-preview { display: block; }
+
+/* 공통 */
+.placeholder { color:#6b7280; text-align:center; padding: 18px 0; }
+.actions { display:flex; align-items:center; gap:10px; margin-top: 6px; }
+.meta { color:#6b7280; font-size:.9rem; }
+.save-row { display:flex; justify-content:flex-end; margin-top: 8px; }
 </style>

@@ -1,6 +1,6 @@
 // functions/upload.js
 import { createClient } from '@supabase/supabase-js';
-
+const publicUrl = `${env.R2_PUBLIC_URL}/${encodeURIComponent(key)}`
 const cors = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'POST, OPTIONS, GET',
